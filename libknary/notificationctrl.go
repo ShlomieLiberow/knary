@@ -168,11 +168,18 @@ func inBlacklist(needles ...string) bool {
 			return true
 		}
 
+		needle = strings.TrimSuffix(needle, ".") // to account for dns containing a trailing dot
 		needleParts := strings.Split(needle, ".")
+		if len(needleParts) < 2 {
+			continue
+		}
+
 		rootDomainParts := needleParts[len(needleParts)-2:]
 		rootDomain := strings.Join(rootDomainParts, ".")
 
-		if needle != os.Getenv("CANARY_DOMAIN") && strings.ToLower(rootDomain) == os.Getenv("CANARY_DOMAIN") {
+		if rootDomain != strings.ToLower(rootDomain) && rootDomain != strings.ToUpper(rootDomain) {
+			Printy("Found "+needle+" contains upper/lowercase mix", 3)
+			logger("INFO", "Found "+needle+" contains upper/lowercase mix")
 			return true
 		}
 	}
