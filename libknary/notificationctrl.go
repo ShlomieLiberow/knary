@@ -167,6 +167,9 @@ func inBlacklist(needles ...string) bool {
 			}
 			return true
 		}
+		if needle != os.Getenv("CANARY_DOMAIN") && strings.ToLower(needle) == os.Getenv("CANARY_DOMAIN") {
+			return true
+		}
 	}
 	return false
 }
