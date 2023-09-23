@@ -167,7 +167,12 @@ func inBlacklist(needles ...string) bool {
 			}
 			return true
 		}
-		if needle != os.Getenv("CANARY_DOMAIN") && strings.ToLower(needle) == os.Getenv("CANARY_DOMAIN") {
+
+		needleParts := strings.Split(needle, ".")
+		rootDomainParts := needleParts[len(needleParts)-2:]
+		rootDomain := strings.Join(rootDomainParts, ".")
+
+		if needle != os.Getenv("CANARY_DOMAIN") && strings.ToLower(rootDomain) == os.Getenv("CANARY_DOMAIN") {
 			return true
 		}
 	}
