@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"golang.org/x/net/publicsuffix"
 )
 
 // Functions that control whether a match will notify a webhook.
@@ -158,6 +159,12 @@ func inAllowlist(needles ...string) bool {
 
 func inBlacklist(needles ...string) bool {
 	for _, needle := range needles {
+		needle = strings.TrimSuffix(needle, ".") // to account for dns containing a trailing dot
+
+		if needle == os.Getenv("CANARY_DOMAIN") {
+			continue // Skip alerting for the core domain
+		}
+
 		if denied.searchD(needle) {
 			denied.updateD(needle) // found!
 
@@ -168,14 +175,12 @@ func inBlacklist(needles ...string) bool {
 			return true
 		}
 
-		needle = strings.TrimSuffix(needle, ".") // to account for dns containing a trailing dot
-		needleParts := strings.Split(needle, ".")
-		if len(needleParts) < 2 {
+		rootDomain, err := publicsuffix.EffectiveTLDPlusOne(needle)
+		if err != nil {
+			// Handle error
+			Printy("Error parsing domain: "+needle, 2)
 			continue
 		}
-
-		rootDomainParts := needleParts[len(needleParts)-2:]
-		rootDomain := strings.Join(rootDomainParts, ".")
 
 		if rootDomain != strings.ToLower(rootDomain) && rootDomain != strings.ToUpper(rootDomain) {
 			Printy("Found "+needle+" contains upper/lowercase mix", 3)
