@@ -72,6 +72,11 @@ func infoLog(ipaddr string, reverse string, name string) {
 }
 
 func goSendMsg(ipaddr, reverse, name, record string) bool {
+
+	if record == "A" {
+		return true
+	}
+
 	if os.Getenv("DNS_SUBDOMAIN") != "" {
 		found := false
 		for _, cdomain := range GetDomains() {
@@ -93,7 +98,7 @@ func goSendMsg(ipaddr, reverse, name, record string) bool {
 		return false
 	}
 
-	if reverse == "" {
+	/* if reverse == "" {
 		go sendMsg("DNS (" + record + "): " + name +
 			"```" +
 			"From: " + ipaddr +
@@ -107,7 +112,7 @@ func goSendMsg(ipaddr, reverse, name, record string) bool {
 			"PTR: " + reverse +
 			"```")
 		infoLog(ipaddr, reverse, name)
-	}
+	} */
 	return true
 }
 

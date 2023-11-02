@@ -160,8 +160,20 @@ func inAllowlist(needles ...string) bool {
 func inBlacklist(needles ...string) bool {
 	for _, needle := range needles {
 		needle = strings.TrimSuffix(needle, ".") // to account for dns containing a trailing dot
+		Printy("Checking "+needle+" against denylist", 3)
 
+		if needle == "" {
+			if os.Getenv("DEBUG") == "true" {
+				logger("INFO", "Empty string passed to denylist")
+			}
+			continue 
+		}
+
+		Printy("value of CANARY_DOMAIN is: "+os.Getenv("CANARY_DOMAIN")+" and value of needle is: "+needle, 3)
 		if needle == os.Getenv("CANARY_DOMAIN") {
+			if os.Getenv("DEBUG") == "true" {
+				logger("INFO", "Skipping alerting for the core domain" + needle)
+			}
 			continue // Skip alerting for the core domain
 		}
 

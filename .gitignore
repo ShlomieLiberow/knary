@@ -16,3 +16,4 @@ certs/*.pem
 certs/archives/*
 !certs/archives/README.md
 static
+.idea/
