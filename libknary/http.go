@@ -279,7 +279,7 @@ func handleRequest(conn net.Conn) bool {
 		}
 	}
 
-	conn.Write([]byte(" ")) // necessary as a 0 byte response triggers some clients to resend the request
+	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n")) // necessary as a 0 byte response triggers some clients to resend the request
 	conn.Close()            // v. important lol
 	return true
 }
