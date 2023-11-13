@@ -44,6 +44,8 @@ func (a *blacklist) updateD(term string) bool {
 
 // search for a denied domain/IP
 func (a *blacklist) searchD(term string) bool {
+	Printy("Checking "+term+" against denylist", 3)
+	
 	item := standerdiseListItem(term)
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
@@ -160,7 +162,6 @@ func inAllowlist(needles ...string) bool {
 func inBlacklist(needles ...string) bool {
 	for _, needle := range needles {
 		needle = strings.TrimSuffix(needle, ".") // to account for dns containing a trailing dot
-		Printy("Checking "+needle+" against denylist", 3)
 
 		if needle == "" {
 			if os.Getenv("DEBUG") == "true" {
@@ -168,7 +169,7 @@ func inBlacklist(needles ...string) bool {
 			}
 			continue 
 		}
-
+		
 		Printy("value of CANARY_DOMAIN is: "+os.Getenv("CANARY_DOMAIN")+" and value of needle is: "+needle, 3)
 		if needle == os.Getenv("CANARY_DOMAIN") {
 			if os.Getenv("DEBUG") == "true" {
