@@ -73,6 +73,15 @@ func stringContains(haystack string, needle string) bool {
 	)
 }
 
+func removePort(s string) string {
+    host, _, err := net.SplitHostPort(s)
+    if err != nil {
+        // If there's an error, return the original string
+        return s
+    }
+    return host
+}
+
 // https://rosettacode.org/wiki/Parse_an_IP_Address#Go
 func splitPort(s string) (string, int) {
 	ip := net.ParseIP(s)
