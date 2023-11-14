@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"net"
 	"golang.org/x/net/publicsuffix"
 )
 
@@ -166,25 +165,23 @@ func inBlacklist(needles ...string) bool {
 	Printy("value of needles array is: "+strings.Join(needles, ", "), 3)
 
 	for _, needle := range needles {
-		needle = strings.TrimSuffix(needle, ".") // to account for dns containing a trailing dot
 
-		// Split the domain name and port
-		needle = removePort(needle)
+		needle = removePortAndHost(needle)
 
 		Printy("value of needle being checked is: "+needle, 3)
-		
+
 		if needle == " " {
 			if os.Getenv("DEBUG") == "true" {
 				logger("INFO", "Empty string passed to denylist")
 			}
-			continue 
+			continue
 		}
-		
+
 		Printy("value of CANARY_DOMAIN is: "+os.Getenv("CANARY_DOMAIN")+" and value of needle is: "+needle, 3)
 
 		if needle == os.Getenv("CANARY_DOMAIN") {
 			if os.Getenv("DEBUG") == "true" {
-				logger("INFO", "Skipping alerting for the core domain" + needle)
+				logger("INFO", "Skipping alerting for the core domain"+needle)
 			}
 			continue // Skip alerting for the core domain
 		}
