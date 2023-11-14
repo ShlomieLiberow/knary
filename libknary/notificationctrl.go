@@ -170,7 +170,7 @@ func inBlacklist(needles ...string) bool {
 
 		Printy("value of needle being checked is: "+needle, 3)
 
-		if needle == " " {
+		if len(strings.TrimSpace(needle)) == 0 {
 			if os.Getenv("DEBUG") == "true" {
 				logger("INFO", "Empty string passed to denylist")
 			}

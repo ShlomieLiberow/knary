@@ -75,7 +75,7 @@ func stringContains(haystack string, needle string) bool {
 
 func removePortAndHost(s string) string {
 	// Trim the "Host:" prefix and any trailing dot
-	s = strings.TrimPrefix(s, "host:")
+	s = strings.TrimPrefix(s, "host: ")
 	s = strings.TrimSuffix(s, ".")
 
 	// Remove the port
