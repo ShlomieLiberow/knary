@@ -2,12 +2,12 @@ package libknary
 
 import (
 	"bufio"
+	"golang.org/x/net/publicsuffix"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"golang.org/x/net/publicsuffix"
 )
 
 // Functions that control whether a match will notify a webhook.
@@ -35,9 +35,8 @@ func (a *blacklist) updateD(term string) bool {
 	if term == "" {
 		return false // would happen if there's no X-Forwarded-For header
 	}
-	item := standerdiseListItem(term)
 	a.mutex.Lock()
-	a.deny[item] = time.Now()
+	a.deny[term] = time.Now()
 	a.mutex.Unlock()
 	return true
 }
@@ -46,11 +45,10 @@ func (a *blacklist) updateD(term string) bool {
 func (a *blacklist) searchD(term string) bool {
 	Printy("Checking "+term+" against denylist", 3)
 
-	item := standerdiseListItem(term)
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	if _, ok := a.deny[item]; ok {
+	if _, ok := a.deny[term]; ok {
 		return true // found!
 	}
 	return false
@@ -64,8 +62,9 @@ func standerdiseListItem(term string) string {
 	if IsIP(d) {
 		sTerm, _ = splitPort(d) // yeet port off IP
 	} else {
-		domain := strings.Split(d, ":")            // split on port number (if exists)
-		sTerm = strings.TrimSuffix(domain[0], ".") // remove trailing FQDN dot if present
+		domain := strings.Split(d, ":")             // split on port number (if exists)
+		sTerm = strings.TrimSuffix(domain[0], ".")  // remove trailing FQDN dot if present
+		sTerm = strings.TrimPrefix(sTerm, "Host: ") // remove Host if present
 	}
 
 	return sTerm
@@ -119,7 +118,7 @@ func LoadBlacklist() (bool, error) {
 
 	for scanner.Scan() { // foreach denied item
 		if scanner.Text() != "" {
-			denied.updateD(scanner.Text())
+			denied.updateD(standerdiseListItem(scanner.Text()))
 			denyCount++
 		}
 	}
@@ -141,6 +140,7 @@ func inAllowlist(needles ...string) bool {
 				// strict matching. don't match subdomains
 				if needle == allowed[i].allow {
 					if os.Getenv("DEBUG") == "true" {
+						logger("INFO", "Found "+needle+" in allowlist (strict mode)")
 						Printy(needle+" matches allowlist", 3)
 					}
 					return true
@@ -149,6 +149,7 @@ func inAllowlist(needles ...string) bool {
 				// allow fuzzy matching
 				if strings.HasSuffix(needle, allowed[i].allow) {
 					if os.Getenv("DEBUG") == "true" {
+						logger("INFO", "Found "+needle+" in allowlist")
 						Printy(needle+" matches allowlist", 3)
 					}
 					return true
@@ -166,7 +167,7 @@ func inBlacklist(needles ...string) bool {
 
 	for _, needle := range needles {
 
-		needle = removePortAndHost(needle)
+		needle := standerdiseListItem(needle)
 
 		Printy("value of needle being checked is: "+needle, 3)
 
