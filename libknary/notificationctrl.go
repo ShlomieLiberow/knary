@@ -185,7 +185,7 @@ func inBlacklist(needles ...string) bool {
 				logger("INFO", "Skipping alerting for the core domain"+needle)
 			}
 			Printy("Skipping alerting for the core domain "+needle, 3)
-			continue // Skip alerting for the core domain
+			return true
 		}
 
 		if denied.searchD(needle) {
