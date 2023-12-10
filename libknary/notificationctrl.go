@@ -43,7 +43,7 @@ func (a *blacklist) updateD(term string) bool {
 
 // search for a denied domain/IP
 func (a *blacklist) searchD(term string) bool {
-	Printy("Checking "+term+" against denylist", 3)
+	Printy("Checking "+term+" against denylist \n", 3)
 
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
@@ -184,6 +184,7 @@ func inBlacklist(needles ...string) bool {
 			if os.Getenv("DEBUG") == "true" {
 				logger("INFO", "Skipping alerting for the core domain"+needle)
 			}
+			Printy("Skipping alerting for the core domain "+needle, 3)
 			continue // Skip alerting for the core domain
 		}
 
