@@ -165,9 +165,18 @@ func inAllowlist(needles ...string) bool {
 }
 
 func inBlacklist(needles ...string) bool {
+	if os.Getenv("DEBUG") == "true" {
+		Printy(fmt.Sprintf("Checking needles: %v", needles), 3)
+	}
+
 	for _, needle := range needles {
 		if len(strings.TrimSpace(needle)) == 0 {
 			continue
+		}
+
+		needle = strings.TrimSpace(needle)
+		if os.Getenv("DEBUG") == "true" {
+			Printy(fmt.Sprintf("Processing needle: %s", needle), 3)
 		}
 
 		// Skip core domain check
@@ -183,8 +192,14 @@ func inBlacklist(needles ...string) bool {
 			strings.Contains(needle, "PUT ") || strings.Contains(needle, "DELETE ") {
 			parts := strings.Fields(needle)
 			if len(parts) >= 2 {
-				// Remove leading slash and keep query parameters
 				path := strings.TrimPrefix(parts[1], "/")
+				if path == "" {
+					if os.Getenv("DEBUG") == "true" {
+						Printy("Skipping empty path", 3)
+					}
+					continue
+				}
+
 				if os.Getenv("DEBUG") == "true" {
 					Printy(fmt.Sprintf("Checking path: %s", path), 3)
 				}
@@ -200,6 +215,14 @@ func inBlacklist(needles ...string) bool {
 					}
 				}
 				continue // Skip checking the full HTTP request against denylist
+			}
+		}
+
+		// Remove port from domain before checking
+		if strings.Contains(needle, ":") && !strings.Contains(needle, "://") {
+			needle = strings.Split(needle, ":")[0]
+			if os.Getenv("DEBUG") == "true" {
+				Printy(fmt.Sprintf("Checking without port: %s", needle), 3)
 			}
 		}
 
@@ -226,6 +249,10 @@ func inBlacklist(needles ...string) bool {
 			}
 			return true
 		}
+	}
+
+	if os.Getenv("DEBUG") == "true" {
+		Printy("No matches found in denylist", 3)
 	}
 	return false
 }
