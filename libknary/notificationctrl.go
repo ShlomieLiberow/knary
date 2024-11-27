@@ -183,25 +183,27 @@ func inBlacklist(needles ...string) bool {
 			strings.Contains(needle, "PUT ") || strings.Contains(needle, "DELETE ") {
 			parts := strings.Fields(needle)
 			if len(parts) >= 2 {
-				// Keep the full path including query parameters
-				fullPath := parts[1]
+				// Remove leading slash and keep query parameters
+				path := strings.TrimPrefix(parts[1], "/")
 				if os.Getenv("DEBUG") == "true" {
-					Printy(fmt.Sprintf("Checking path: %s", fullPath), 3)
+					Printy(fmt.Sprintf("Checking path: %s", path), 3)
 				}
 
 				// Check if path matches any denylist entry
 				for deniedItem := range denied.deny {
-					if strings.Contains(fullPath, deniedItem) {
+					if strings.Contains(path, deniedItem) {
 						if os.Getenv("DEBUG") == "true" {
-							Printy(fmt.Sprintf("Found match: %s contains denylist entry: %s", fullPath, deniedItem), 3)
+							Printy(fmt.Sprintf("Found match: %s contains denylist entry: %s", path, deniedItem), 3)
 						}
 						denied.updateD(needle)
 						return true
 					}
 				}
+				continue // Skip checking the full HTTP request against denylist
 			}
 		}
 
+		// Check other needles against denylist
 		if denied.searchD(needle) {
 			denied.updateD(needle)
 			if os.Getenv("DEBUG") == "true" {
