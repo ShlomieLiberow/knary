@@ -261,7 +261,7 @@ func handleRequest(conn net.Conn) bool {
 				}
 			}
 
-			if !inBlacklist(needles...) {
+			if inBlacklist(needles...) {
 				return httpRespond(conn)
 			}
 
@@ -269,6 +269,7 @@ func handleRequest(conn net.Conn) bool {
 				return httpRespond(conn)
 			}
 
+			// If we get here, send the notification
 			var msg string
 			var fromIP string
 
