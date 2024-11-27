@@ -2,12 +2,13 @@ package libknary
 
 import (
 	"bufio"
-	"golang.org/x/net/publicsuffix"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/net/publicsuffix"
 )
 
 // Functions that control whether a match will notify a webhook.
@@ -166,7 +167,6 @@ func inBlacklist(needles ...string) bool {
 	Printy("value of needles array is: "+strings.Join(needles, ", "), 3)
 
 	for _, needle := range needles {
-
 		needle := standerdiseListItem(needle)
 
 		Printy("value of needle being checked is: "+needle, 3)
@@ -180,6 +180,28 @@ func inBlacklist(needles ...string) bool {
 
 		Printy("value of CANARY_DOMAIN is: "+os.Getenv("CANARY_DOMAIN")+" and value of needle is: "+needle, 3)
 
+		// Check if needle is a query string
+		if strings.Contains(needle, "Query: ") {
+			// Extract the full path including query params from the query
+			parts := strings.Split(needle, " ")
+			if len(parts) >= 3 {
+				path := parts[2]
+
+				// Use searchD to check if any denylist entry is contained in the path
+				for deniedItem := range denied.deny {
+					if strings.Contains(path, deniedItem) {
+						denied.updateD(needle)
+						if os.Getenv("DEBUG") == "true" {
+							logger("INFO", "Found endpoint match "+path+" contains "+deniedItem+" in denylist")
+							Printy("Found endpoint match "+path+" contains "+deniedItem+" in denylist", 3)
+						}
+						return true
+					}
+				}
+			}
+		}
+
+		// Existing domain/IP checks
 		if needle == os.Getenv("CANARY_DOMAIN") {
 			if os.Getenv("DEBUG") == "true" {
 				logger("INFO", "Skipping alerting for the core domain"+needle)
@@ -189,8 +211,7 @@ func inBlacklist(needles ...string) bool {
 		}
 
 		if denied.searchD(needle) {
-			denied.updateD(needle) // found!
-
+			denied.updateD(needle)
 			if os.Getenv("DEBUG") == "true" {
 				logger("INFO", "Found "+needle+" in denylist")
 				Printy("Found "+needle+" in denylist", 3)
@@ -200,7 +221,6 @@ func inBlacklist(needles ...string) bool {
 
 		rootDomain, err := publicsuffix.EffectiveTLDPlusOne(needle)
 		if err != nil {
-			// Handle error
 			Printy("Error parsing domain: "+needle, 2)
 			continue
 		}
