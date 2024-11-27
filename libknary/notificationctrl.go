@@ -2,6 +2,7 @@ package libknary
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -44,13 +45,16 @@ func (a *blacklist) updateD(term string) bool {
 
 // search for a denied domain/IP
 func (a *blacklist) searchD(term string) bool {
-	Printy("Checking "+term+" against denylist \n", 3)
+	if os.Getenv("DEBUG") == "true" {
+		msg := fmt.Sprintf("Checking '%s' against denylist", term)
+		Printy(msg, 3)
+	}
 
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
 	if _, ok := a.deny[term]; ok {
-		return true // found!
+		return true
 	}
 	return false
 }
@@ -162,37 +166,32 @@ func inAllowlist(needles ...string) bool {
 }
 
 func inBlacklist(needles ...string) bool {
-	// print value of needles array for debugging
-	Printy("value of needles array is: "+strings.Join(needles, ", "), 3)
-
 	for _, needle := range needles {
 		if len(strings.TrimSpace(needle)) == 0 {
 			continue
 		}
 
-		Printy("value of needle being checked is: "+needle, 3)
-
 		// Skip core domain check
 		if needle == os.Getenv("CANARY_DOMAIN") {
-			Printy("Skipping alerting for the core domain "+needle, 3)
+			if os.Getenv("DEBUG") == "true" {
+				Printy("Skipping core domain: "+needle, 3)
+			}
 			return true
 		}
 
 		// Check if needle is a HTTP request
 		if strings.Contains(needle, "GET ") || strings.Contains(needle, "POST ") ||
 			strings.Contains(needle, "PUT ") || strings.Contains(needle, "DELETE ") {
-			// Extract the path from the request
-			parts := strings.Fields(needle) // Split on whitespace
+			parts := strings.Fields(needle)
 			if len(parts) >= 2 {
-				path := strings.TrimPrefix(parts[1], "/") // Remove leading slash if present
-
-				Printy("Checking path: "+path+" against denylist entries", 3)
+				path := strings.TrimPrefix(parts[1], "/")
 
 				// Check if path matches any denylist entry
 				for deniedItem := range denied.deny {
-					Printy("Comparing path against denylist entry: "+deniedItem, 3)
 					if strings.Contains(path, deniedItem) {
-						Printy("Found match: path "+path+" contains denylist entry "+deniedItem, 3)
+						if os.Getenv("DEBUG") == "true" {
+							Printy("Found match: '"+path+"' contains denylist entry '"+deniedItem+"'", 3)
+						}
 						denied.updateD(needle)
 						return true
 					}
@@ -200,33 +199,26 @@ func inBlacklist(needles ...string) bool {
 			}
 		}
 
-		// Existing domain/IP checks
-		if needle == os.Getenv("CANARY_DOMAIN") {
-			if os.Getenv("DEBUG") == "true" {
-				logger("INFO", "Skipping alerting for the core domain"+needle)
-			}
-			Printy("Skipping alerting for the core domain "+needle, 3)
-			return true
-		}
-
 		if denied.searchD(needle) {
 			denied.updateD(needle)
 			if os.Getenv("DEBUG") == "true" {
-				logger("INFO", "Found "+needle+" in denylist")
-				Printy("Found "+needle+" in denylist", 3)
+				Printy("Found '"+needle+"' in denylist", 3)
 			}
 			return true
 		}
 
 		rootDomain, err := publicsuffix.EffectiveTLDPlusOne(needle)
 		if err != nil {
-			Printy("Error parsing domain: "+needle, 2)
+			if os.Getenv("DEBUG") == "true" {
+				Printy("Error parsing domain '"+needle+"'", 2)
+			}
 			continue
 		}
 
 		if rootDomain != strings.ToLower(rootDomain) && rootDomain != strings.ToUpper(rootDomain) {
-			Printy("Found "+needle+" contains upper/lowercase mix", 3)
-			logger("INFO", "Found "+needle+" contains upper/lowercase mix")
+			if os.Getenv("DEBUG") == "true" {
+				Printy("Found mixed case in domain '"+needle+"'", 3)
+			}
 			return true
 		}
 	}

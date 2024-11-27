@@ -253,9 +253,15 @@ func handleRequest(conn net.Conn) bool {
 			searchUserAgent := strings.TrimPrefix(strings.ToLower(userAgent), "user-agent:")
 			searchDomain := strings.TrimPrefix(strings.ToLower(host), "host:") // trim off the "Host:" section of header
 
-			// these conditionals were bugged in <=3.4.6 whereby subdomains/ips in the allowlist weren't allowed unless the user-agent was ALSO in the allowlist
-			// it should be easier to grok now
-			if !inBlacklist(query, searchUserAgent, searchDomain, conn.RemoteAddr().String(), fwd) {
+			// Filter out empty values
+			var needles []string
+			for _, n := range []string{query, searchUserAgent, searchDomain, conn.RemoteAddr().String(), fwd} {
+				if n != "" {
+					needles = append(needles, n)
+				}
+			}
+
+			if !inBlacklist(needles...) {
 				return httpRespond(conn)
 			}
 
