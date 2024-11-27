@@ -162,49 +162,38 @@ func inAllowlist(needles ...string) bool {
 }
 
 func inBlacklist(needles ...string) bool {
-	// Filter out empty needles first
-	var filteredNeedles []string
-	for _, n := range needles {
-		if len(strings.TrimSpace(n)) > 0 {
-			filteredNeedles = append(filteredNeedles, n)
-		}
-	}
+	// print value of needles array for debugging
+	Printy("value of needles array is: "+strings.Join(needles, ", "), 3)
 
-	// print value of needles array
-	Printy("value of needles array is: "+strings.Join(filteredNeedles, ", "), 3)
-
-	for _, needle := range filteredNeedles {
-		needle := standerdiseListItem(needle)
-
-		Printy("value of needle being checked is: "+needle, 3)
-
+	for _, needle := range needles {
 		if len(strings.TrimSpace(needle)) == 0 {
-			if os.Getenv("DEBUG") == "true" {
-				logger("INFO", "Empty string passed to denylist")
-			}
 			continue
 		}
 
-		Printy("value of CANARY_DOMAIN is: "+os.Getenv("CANARY_DOMAIN")+" and value of needle is: "+needle, 3)
+		Printy("value of needle being checked is: "+needle, 3)
 
-		// Check if needle contains a HTTP request path
+		// Skip core domain check
+		if needle == os.Getenv("CANARY_DOMAIN") {
+			Printy("Skipping alerting for the core domain "+needle, 3)
+			return true
+		}
+
+		// Check if needle is a HTTP request
 		if strings.Contains(needle, "GET ") || strings.Contains(needle, "POST ") ||
 			strings.Contains(needle, "PUT ") || strings.Contains(needle, "DELETE ") {
 			// Extract the path from the request
 			parts := strings.Fields(needle) // Split on whitespace
 			if len(parts) >= 2 {
-				path := parts[1] // The path is the second element after the HTTP method
-				// Remove leading slash if present for matching
-				path = strings.TrimPrefix(path, "/")
+				path := strings.TrimPrefix(parts[1], "/") // Remove leading slash if present
 
-				// Check if any denylist entry matches this path
+				Printy("Checking path: "+path+" against denylist entries", 3)
+
+				// Check if path matches any denylist entry
 				for deniedItem := range denied.deny {
-					if strings.HasPrefix(path, deniedItem) {
+					Printy("Comparing path against denylist entry: "+deniedItem, 3)
+					if strings.Contains(path, deniedItem) {
+						Printy("Found match: path "+path+" contains denylist entry "+deniedItem, 3)
 						denied.updateD(needle)
-						if os.Getenv("DEBUG") == "true" {
-							logger("INFO", "Found endpoint match "+path+" starts with "+deniedItem+" in denylist")
-							Printy("Found endpoint match "+path+" starts with "+deniedItem+" in denylist", 3)
-						}
 						return true
 					}
 				}
