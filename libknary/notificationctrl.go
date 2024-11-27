@@ -162,11 +162,18 @@ func inAllowlist(needles ...string) bool {
 }
 
 func inBlacklist(needles ...string) bool {
+	// Filter out empty needles first
+	var filteredNeedles []string
+	for _, n := range needles {
+		if len(strings.TrimSpace(n)) > 0 {
+			filteredNeedles = append(filteredNeedles, n)
+		}
+	}
 
 	// print value of needles array
-	Printy("value of needles array is: "+strings.Join(needles, ", "), 3)
+	Printy("value of needles array is: "+strings.Join(filteredNeedles, ", "), 3)
 
-	for _, needle := range needles {
+	for _, needle := range filteredNeedles {
 		needle := standerdiseListItem(needle)
 
 		Printy("value of needle being checked is: "+needle, 3)
@@ -180,20 +187,23 @@ func inBlacklist(needles ...string) bool {
 
 		Printy("value of CANARY_DOMAIN is: "+os.Getenv("CANARY_DOMAIN")+" and value of needle is: "+needle, 3)
 
-		// Check if needle is a query string
-		if strings.Contains(needle, "Query: ") {
-			// Extract the full path including query params from the query
-			parts := strings.Split(needle, " ")
-			if len(parts) >= 3 {
-				path := parts[2]
+		// Check if needle contains a HTTP request path
+		if strings.Contains(needle, "GET ") || strings.Contains(needle, "POST ") ||
+			strings.Contains(needle, "PUT ") || strings.Contains(needle, "DELETE ") {
+			// Extract the path from the request
+			parts := strings.Fields(needle) // Split on whitespace
+			if len(parts) >= 2 {
+				path := parts[1] // The path is the second element after the HTTP method
+				// Remove leading slash if present for matching
+				path = strings.TrimPrefix(path, "/")
 
-				// Use searchD to check if any denylist entry is contained in the path
+				// Check if any denylist entry matches this path
 				for deniedItem := range denied.deny {
-					if strings.Contains(path, deniedItem) {
+					if strings.HasPrefix(path, deniedItem) {
 						denied.updateD(needle)
 						if os.Getenv("DEBUG") == "true" {
-							logger("INFO", "Found endpoint match "+path+" contains "+deniedItem+" in denylist")
-							Printy("Found endpoint match "+path+" contains "+deniedItem+" in denylist", 3)
+							logger("INFO", "Found endpoint match "+path+" starts with "+deniedItem+" in denylist")
+							Printy("Found endpoint match "+path+" starts with "+deniedItem+" in denylist", 3)
 						}
 						return true
 					}
