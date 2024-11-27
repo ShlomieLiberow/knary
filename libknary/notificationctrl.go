@@ -46,8 +46,7 @@ func (a *blacklist) updateD(term string) bool {
 // search for a denied domain/IP
 func (a *blacklist) searchD(term string) bool {
 	if os.Getenv("DEBUG") == "true" {
-		msg := fmt.Sprintf("Checking '%s' against denylist", term)
-		Printy(msg, 3)
+		Printy(fmt.Sprintf("Checking denylist for: %s", term), 3)
 	}
 
 	a.mutex.Lock()
@@ -174,7 +173,7 @@ func inBlacklist(needles ...string) bool {
 		// Skip core domain check
 		if needle == os.Getenv("CANARY_DOMAIN") {
 			if os.Getenv("DEBUG") == "true" {
-				Printy("Skipping core domain: "+needle, 3)
+				Printy(fmt.Sprintf("Skipping core domain: %s", needle), 3)
 			}
 			return true
 		}
@@ -184,13 +183,17 @@ func inBlacklist(needles ...string) bool {
 			strings.Contains(needle, "PUT ") || strings.Contains(needle, "DELETE ") {
 			parts := strings.Fields(needle)
 			if len(parts) >= 2 {
-				path := strings.TrimPrefix(parts[1], "/")
+				// Keep the full path including query parameters
+				fullPath := parts[1]
+				if os.Getenv("DEBUG") == "true" {
+					Printy(fmt.Sprintf("Checking path: %s", fullPath), 3)
+				}
 
 				// Check if path matches any denylist entry
 				for deniedItem := range denied.deny {
-					if strings.Contains(path, deniedItem) {
+					if strings.Contains(fullPath, deniedItem) {
 						if os.Getenv("DEBUG") == "true" {
-							Printy("Found match: '"+path+"' contains denylist entry '"+deniedItem+"'", 3)
+							Printy(fmt.Sprintf("Found match: %s contains denylist entry: %s", fullPath, deniedItem), 3)
 						}
 						denied.updateD(needle)
 						return true
@@ -202,7 +205,7 @@ func inBlacklist(needles ...string) bool {
 		if denied.searchD(needle) {
 			denied.updateD(needle)
 			if os.Getenv("DEBUG") == "true" {
-				Printy("Found '"+needle+"' in denylist", 3)
+				Printy(fmt.Sprintf("Found in denylist: %s", needle), 3)
 			}
 			return true
 		}
@@ -210,14 +213,14 @@ func inBlacklist(needles ...string) bool {
 		rootDomain, err := publicsuffix.EffectiveTLDPlusOne(needle)
 		if err != nil {
 			if os.Getenv("DEBUG") == "true" {
-				Printy("Error parsing domain '"+needle+"'", 2)
+				Printy(fmt.Sprintf("Error parsing domain: %s", needle), 2)
 			}
 			continue
 		}
 
 		if rootDomain != strings.ToLower(rootDomain) && rootDomain != strings.ToUpper(rootDomain) {
 			if os.Getenv("DEBUG") == "true" {
-				Printy("Found mixed case in domain '"+needle+"'", 3)
+				Printy(fmt.Sprintf("Found mixed case in domain: %s", needle), 3)
 			}
 			return true
 		}
