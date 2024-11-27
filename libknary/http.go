@@ -255,7 +255,7 @@ func handleRequest(conn net.Conn) bool {
 
 			// these conditionals were bugged in <=3.4.6 whereby subdomains/ips in the allowlist weren't allowed unless the user-agent was ALSO in the allowlist
 			// it should be easier to grok now
-			if inBlacklist(searchUserAgent, searchDomain, conn.RemoteAddr().String(), fwd) { // inBlacklist returns false on empty/unused denylists
+			if !inBlacklist(query, searchUserAgent, searchDomain, conn.RemoteAddr().String(), fwd) {
 				return httpRespond(conn)
 			}
 
