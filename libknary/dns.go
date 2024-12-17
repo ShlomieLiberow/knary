@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -55,7 +56,21 @@ func AcceptDNS(wg *sync.WaitGroup) {
 //  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 
 func HandleDNS(w dns.ResponseWriter, r *dns.Msg, EXT_IP string) {
-	// many thanks to the original author of this function
+	// Get IP address without port
+	ipAddr, _, err := net.SplitHostPort(w.RemoteAddr().String())
+	if err != nil {
+		Printy("Failed to parse remote address: "+err.Error(), 2)
+		return
+	}
+
+	// Check rate limit before processing request
+	if limiter.checkAndUpdate(ipAddr) {
+		m := new(dns.Msg)
+		m.SetReply(r)
+		w.WriteMsg(m)
+		return
+	}
+
 	m := new(dns.Msg)
 	m.SetReply(r)
 	m.Compress = false

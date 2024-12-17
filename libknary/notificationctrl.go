@@ -32,6 +32,21 @@ type blacklist struct {
 var denied = blacklist{deny: make(map[string]time.Time)}
 var denyCount = 0
 
+// Add these new structures after the existing types
+type requestCount struct {
+	count     int
+	firstSeen time.Time
+}
+
+type rateLimiter struct {
+	mutex sync.RWMutex
+	ips   map[string]requestCount
+}
+
+var limiter = rateLimiter{
+	ips: make(map[string]requestCount),
+}
+
 // add or update a denied domain/IP
 func (a *blacklist) updateD(term string) bool {
 	if term == "" {
@@ -275,4 +290,78 @@ func checkLastHit() bool { // this runs once a day
 	}
 
 	return true
+}
+
+func (r *rateLimiter) checkAndUpdate(ip string) bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	now := time.Now()
+	if record, exists := r.ips[ip]; exists {
+		// If 5 seconds have passed, reset the counter
+		if now.Sub(record.firstSeen) > 5*time.Second {
+			r.ips[ip] = requestCount{
+				count:     1,
+				firstSeen: now,
+			}
+			return false
+		}
+
+		// Update count
+		record.count++
+		r.ips[ip] = record
+
+		// Check if threshold exceeded
+		if record.count > 10 {
+			// Add to denylist file
+			if err := addToDenylist(ip); err != nil {
+				Printy("Failed to add "+ip+" to denylist: "+err.Error(), 2)
+				return false
+			}
+
+			// Log the event
+			msg := "IP " + ip + " exceeded rate limit (10 requests/5s) and was added to denylist"
+			logger("WARNING", msg)
+			Printy(msg, 2)
+			go sendMsg(":warning: " + msg)
+
+			// Clean up this IP from rate limiter
+			delete(r.ips, ip)
+			return true
+		}
+		return false
+	}
+
+	// First request from this IP
+	r.ips[ip] = requestCount{
+		count:     1,
+		firstSeen: now,
+	}
+	return false
+}
+
+func addToDenylist(ip string) error {
+	// Get denylist file path from env
+	denylistFile := os.Getenv("DENYLIST_FILE")
+	if denylistFile == "" {
+		denylistFile = "denylist.txt"
+	}
+
+	// Open file in append mode
+	f, err := os.OpenFile(denylistFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Write IP to file
+	if _, err := f.WriteString(ip + "\n"); err != nil {
+		return err
+	}
+
+	// Update the in-memory denylist
+	denied.updateD(ip)
+	denyCount++
+
+	return nil
 }

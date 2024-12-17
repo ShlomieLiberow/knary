@@ -163,6 +163,18 @@ func httpRespond(conn net.Conn) bool {
 }
 
 func handleRequest(conn net.Conn) bool {
+	// Get IP address without port
+	ipAddr, _, err := net.SplitHostPort(conn.RemoteAddr().String())
+	if err != nil {
+		Printy("Failed to parse remote address: "+err.Error(), 2)
+		return false
+	}
+
+	// Check rate limit before processing request
+	if limiter.checkAndUpdate(ipAddr) {
+		return httpRespond(conn)
+	}
+
 	// set timeout for reading responses
 	_ = conn.SetDeadline(time.Now().Add(time.Second * time.Duration(2))) // 2 seconds
 
