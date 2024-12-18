@@ -296,6 +296,11 @@ func (r *rateLimiter) checkAndUpdate(ip string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
+	// First check if IP is already in denylist
+	if denied.searchD(ip) {
+		return true
+	}
+
 	now := time.Now()
 	if record, exists := r.ips[ip]; exists {
 		// If 5 seconds have passed, reset the counter
@@ -313,17 +318,13 @@ func (r *rateLimiter) checkAndUpdate(ip string) bool {
 
 		// Check if threshold exceeded
 		if record.count > 10 {
-			// Add to denylist file
+			// Add to denylist file only if not already present
 			if err := addToDenylist(ip); err != nil {
-				Printy("Failed to add "+ip+" to denylist: "+err.Error(), 2)
+				if !os.IsExist(err) { // Only log if it's not a "file exists" error
+					Printy("Failed to add "+ip+" to denylist: "+err.Error(), 2)
+				}
 				return false
 			}
-
-			// Log the event
-			msg := "IP " + ip + " exceeded rate limit (10 requests/5s) and was added to denylist"
-			logger("WARNING", msg)
-			Printy(msg, 2)
-			go sendMsg(":warning: " + msg)
 
 			// Clean up this IP from rate limiter
 			delete(r.ips, ip)
@@ -347,6 +348,11 @@ func addToDenylist(ip string) error {
 		denylistFile = "denylist.txt"
 	}
 
+	// First check if IP is already in the denylist file
+	if denied.searchD(ip) {
+		return os.ErrExist // Return special error if already exists
+	}
+
 	// Open file in append mode
 	f, err := os.OpenFile(denylistFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -362,6 +368,12 @@ func addToDenylist(ip string) error {
 	// Update the in-memory denylist
 	denied.updateD(ip)
 	denyCount++
+
+	// Log the event - only done once when actually added
+	msg := "IP " + ip + " exceeded rate limit (10 requests/5s) and was added to denylist"
+	logger("WARNING", msg)
+	Printy(msg, 2)
+	go sendMsg(":warning: " + msg)
 
 	return nil
 }
