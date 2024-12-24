@@ -68,6 +68,9 @@ func (a *blacklist) searchD(term string) bool {
 	defer a.mutex.Unlock()
 
 	if _, ok := a.deny[term]; ok {
+		if os.Getenv("DEBUG") == "true" {
+			Printy(fmt.Sprintf("Found %s in denylist", term), 3)
+		}
 		return true
 	}
 	return false
@@ -304,7 +307,7 @@ func (r *rateLimiter) checkAndUpdate(ip string) bool {
 	now := time.Now()
 	if record, exists := r.ips[ip]; exists {
 		// If 5 seconds have passed, reset the counter
-		if now.Sub(record.firstSeen) > 5*time.Second {
+		if now.Sub(record.firstSeen) > 8*time.Second {
 			r.ips[ip] = requestCount{
 				count:     1,
 				firstSeen: now,
@@ -370,7 +373,7 @@ func addToDenylist(ip string) error {
 	denyCount++
 
 	// Log the event - only done once when actually added
-	msg := "IP " + ip + " exceeded rate limit (10 requests/5s) and was added to denylist"
+	msg := "IP " + ip + " exceeded rate limit (10 requests/8s) and was added to denylist"
 	logger("WARNING", msg)
 	Printy(msg, 2)
 	go sendMsg(":warning: " + msg)
